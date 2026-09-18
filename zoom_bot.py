@@ -97,7 +97,7 @@ def to_web_client_url(url: str) -> str:
     never tries to hand off to the desktop app.
 
     https://us05web.zoom.us/j/12345678901?pwd=XYZ
-        -> https://app.zoom.us/wc/12345678901/join?pwd=XYZ&fromPWA=1
+        -> https://app.zoom.us/wc/join/12345678901?pwd=XYZ&fromPWA=1
     """
     url = url.strip()
     if "/wc/" in url:
@@ -114,7 +114,7 @@ def to_web_client_url(url: str) -> str:
     if p:
         pwd = p.group(1)
 
-    new = f"https://app.zoom.us/wc/{meeting_id}/join?fromPWA=1&browser=chrome"
+    new = f"https://app.zoom.us/wc/join/{meeting_id}?fromPWA=1&browser=chrome"
     if pwd:
         new += f"&pwd={pwd}"
     return new
@@ -234,10 +234,14 @@ async def join_meeting(pw, cfg: dict, meeting: dict) -> tuple[BrowserContext, Pa
     log.info("landed on: %s", page.url)
     await shot(page, cfg, "landed")
 
-    if page.url.rstrip("/") in ("https://zoom.us", "https://app.zoom.us", "https://www.zoom.us"):
-        log.warning("Redirected to the Zoom homepage instead of the join page - "
+    bad_landings = (
+        "https://zoom.us", "https://app.zoom.us", "https://www.zoom.us",
+        "https://app.zoom.us/wc", "https://app.zoom.us/wc/",
+    )
+    if page.url.rstrip("/") in [b.rstrip("/") for b in bad_landings]:
+        log.warning("Redirected away from the join page (landed on %s) - "
                      "the /wc/ join link may be malformed or blocked. Retrying "
-                     "with the raw invite URL.")
+                     "with the raw invite URL.", page.url)
         await page.goto(meeting["url"], wait_until="domcontentloaded", timeout=90000)
         try:
             await page.wait_for_load_state("networkidle", timeout=15000)

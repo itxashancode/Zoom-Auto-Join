@@ -1,0 +1,21 @@
+{
+  "timezone": "Asia/Karachi",
+  "display_name": "Ashan",
+  "headless": false,
+  "join_computer_audio": true,
+  "check_interval_seconds": 20,
+  "rejoin_backoff_seconds": 30,
+  "screenshot_dir": "screenshots",
+
+  "meetings": [
+    {
+      "name": "Wajahat PMR",
+      "enabled": true,
+      "url": "https://zoom.us/j/8292685435?pwd=Y0lUa0NsQys3Z0tsb3E4UUd1cSt5QT09",
+      "passcode": "01234",
+      "days": ["tue", "thu", "sat"],
+      "start": "17:00",
+      "end": "19:00"
+    }
+  ]
+}

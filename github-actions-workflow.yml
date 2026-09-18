@@ -1,0 +1,54 @@
+# Save in your repo as:  .github/workflows/zoom.yml
+#
+# Schedule: Tuesday, Thursday, Saturday - 5:00pm to 7:00pm Pakistan time.
+# GitHub cron is UTC and Pakistan is UTC+5, so 17:00 PKT = 12:00 UTC.
+# We fire at 11:50 UTC (16:50 PKT) because GitHub routinely starts scheduled
+# jobs 5-15 minutes late. The bot parks in "waiting for host" until 5pm and
+# leaves on its own at 7pm.
+
+name: zoom-attend
+
+on:
+  schedule:
+    - cron: "50 11 * * 2,4,6"     # Tue, Thu, Sat
+  workflow_dispatch:              # lets you run it manually to test
+
+jobs:
+  attend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 165          # ~2h45m ceiling; bot exits at 7pm anyway
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+          sudo apt-get install -y xvfb
+
+      - name: Write config from secret
+        env:
+          ZOOM_CONFIG: ${{ secrets.ZOOM_CONFIG }}
+        run: |
+          printf '%s' "$ZOOM_CONFIG" > config.json
+          python -c "import json;json.load(open('config.json'));print('config OK')"
+
+      - name: Join meeting
+        run: |
+          xvfb-run -a --server-args="-screen 0 1280x800x24" \
+            python zoom_bot.py --once "Wajahat PMR"
+
+      - name: Upload logs and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-${{ github.run_id }}
+          path: |
+            screenshots/
+            zoom_bot.log
+          if-no-files-found: ignore
+          retention-days: 3

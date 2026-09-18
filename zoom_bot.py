@@ -227,7 +227,33 @@ async def join_meeting(pw, cfg: dict, meeting: dict) -> tuple[BrowserContext, Pa
     page.set_default_timeout(20000)
 
     await page.goto(url, wait_until="domcontentloaded", timeout=90000)
-    await page.wait_for_timeout(4000)
+    try:
+        await page.wait_for_load_state("networkidle", timeout=15000)
+    except Exception:
+        pass
+    log.info("landed on: %s", page.url)
+    await shot(page, cfg, "landed")
+
+    if page.url.rstrip("/") in ("https://zoom.us", "https://app.zoom.us", "https://www.zoom.us"):
+        log.warning("Redirected to the Zoom homepage instead of the join page - "
+                     "the /wc/ join link may be malformed or blocked. Retrying "
+                     "with the raw invite URL.")
+        await page.goto(meeting["url"], wait_until="domcontentloaded", timeout=90000)
+        try:
+            await page.wait_for_load_state("networkidle", timeout=15000)
+        except Exception:
+            pass
+        log.info("landed on (2nd try): %s", page.url)
+        await shot(page, cfg, "landed-2nd-try")
+        await click_first(page, [
+            "a:has-text('Join from your browser')",
+            "a:has-text('Join from Your Browser')",
+            "text=Join from your browser",
+            "a#launch_btn ~ a",
+        ], timeout=6000)
+        await page.wait_for_timeout(3000)
+        log.info("landed on (after browser-join click): %s", page.url)
+        await shot(page, cfg, "landed-after-click")
 
     # 1) "Launch Meeting" interstitial -> take the browser link instead
     await click_first(page, [
